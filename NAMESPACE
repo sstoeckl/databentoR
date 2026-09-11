@@ -1,0 +1,6 @@
+# Manually maintained until the dev thread runs roxygen2::roxygenise().
+export(db_get_cost)
+export(db_get_range)
+export(db_list_datasets)
+export(db_list_schemas)
+export(db_has_key)

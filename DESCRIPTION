@@ -1,0 +1,30 @@
+Package: databentoR
+Title: R Client for the 'Databento' Historical Market Data API
+Version: 0.0.0.9000
+Authors@R:
+    person("Sebastian", "Stöckl", , "sebastian.stoeckl@uni.li",
+           role = c("aut", "cre"))
+Description: Access the 'Databento' historical market data HTTP API
+    <https://databento.com> from R: cost previews, metadata, and
+    streaming range requests returned as tibbles or written to
+    'parquet' files. Mirrors the interface of the official 'Python'
+    client ('metadata.get_cost', 'timeseries.get_range', ...) without
+    requiring 'Python' or the binary 'DBN' format, by using the CSV
+    encoding of the HTTP API.
+License: MIT + file LICENSE
+URL: https://github.com/sstoeckl/databentoR
+BugReports: https://github.com/sstoeckl/databentoR/issues
+Depends:
+    R (>= 4.1)
+Imports:
+    arrow,
+    httr2 (>= 1.0.0),
+    tibble
+Suggests:
+    digest,
+    testthat (>= 3.0.0),
+    withr
+Config/testthat/edition: 3
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.2

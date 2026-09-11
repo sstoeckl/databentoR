@@ -1,0 +1,9 @@
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+*.Rcheck/
+CLAUDE.md
+dev/equivalence/reference/
+inst/doc
+docs
