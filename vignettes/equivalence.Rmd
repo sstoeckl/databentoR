@@ -158,6 +158,24 @@ client.
    distinguishes them. `ts_type = "integer64"` requests raw timestamps and
    keeps the distinction.
 
+## The published attestation
+
+This vignette documents the method. The *result* is published separately,
+because a vignette has to build offline from the package tarball and a live
+comparison cannot. Each weekly run writes an attestation to the workflow's
+own summary and commits it to
+[`dev/equivalence/LAST-RUN.md`](https://github.com/sstoeckl/databentoR/blob/master/dev/equivalence/LAST-RUN.md),
+so the repository carries a dated history of the comparison.
+
+That report states verdicts and shapes and nothing else: rows and columns
+compared, columns matched, the largest relative deviation, pass or fail. It
+contains no field values at all. No sample rows, no extracts, and no summary
+statistics either, since a minimum or mean price is derived market data rather
+than a fact about the software. Column names and types are safe because
+Databento publishes them itself; the values under them are not, and never
+reach the report. `tests/testthat/test-report.R` asserts it, and the generator
+refuses outright to render a column outside its whitelist.
+
 ## Layer 3: watching the reference
 
 A weekly workflow compares the pinned submodule with the newest upstream

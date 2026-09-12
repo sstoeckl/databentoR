@@ -131,6 +131,19 @@ DATABENTOR_RUN_LIVE=true Rscript -e 'devtools::test()'
    distinguishes them. Request `pretty_ts = FALSE` (which `ts_type =
    "integer64"` does) if that distinction matters.
 
+## The attestation
+
+`report.R` turns a live run into `LAST-RUN.md`: one row per slice with the
+rows and columns compared, how many columns matched, the largest relative
+deviation, and a verdict. The weekly workflow writes it to the run summary and
+commits it, so the repository keeps a dated history.
+
+It carries no field values. No sample rows, no extracts, no summary statistics
+of the data. The generator holds a whitelist of permitted columns and errors
+rather than render anything else; `tests/testthat/test-report.R` checks that,
+including that a results frame contaminated with prices and symbols is
+rejected.
+
 ## Layer 3 — upstream watch (weekly)
 
 `.github/workflows/upstream-watch.yaml` compares the pin with the newest
