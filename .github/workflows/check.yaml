@@ -9,26 +9,33 @@ on:
 jobs:
   check:
     runs-on: ${{ matrix.config.os }}
-    name: check (${{ matrix.config.os }})
+    name: check (${{ matrix.config.os }}, R ${{ matrix.config.r }})
     strategy:
       fail-fast: false
       matrix:
         config:
-          - { os: ubuntu-latest }
-          - { os: windows-latest }
-          - { os: macos-latest }
+          # CRAN checks against r-devel, so the release-only matrix is not
+          # enough to predict a submission result.
+          - { os: ubuntu-latest,  r: 'devel', http-user-agent: 'release' }
+          - { os: ubuntu-latest,  r: 'release' }
+          - { os: ubuntu-latest,  r: 'oldrel-1' }
+          - { os: windows-latest, r: 'release' }
+          - { os: macos-latest,   r: 'release' }
     env:
       # run the suite in a non-UTC timezone to catch Date/POSIXct pitfalls
       TZ: "America/New_York"
       _R_CHECK_FORCE_SUGGESTS_: false
     concurrency:
-      group: check-${{ matrix.config.os }}-${{ github.ref }}
+      group: check-${{ matrix.config.os }}-${{ matrix.config.r }}-${{ github.ref }}
       cancel-in-progress: true
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
       - uses: r-lib/actions/setup-r@v2
-        with: { use-public-rspm: true }
+        with:
+          r-version: ${{ matrix.config.r }}
+          http-user-agent: ${{ matrix.config.http-user-agent }}
+          use-public-rspm: true
       - uses: r-lib/actions/setup-pandoc@v2
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
