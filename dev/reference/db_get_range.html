@@ -169,6 +169,13 @@ billed twice.</p>
 <p>Column types are assigned explicitly from the field name, never inferred.
 Inference is unsafe here: a <code>trades</code> slice whose <code>action</code> column is all
 <code>"T"</code> would otherwise be read as boolean. See <code><a href="db_field_types.html">db_field_types()</a></code>.</p>
+<p>Fields that are 64-bit on the wire come back as <code><a href="https://bit64.r-lib.org/reference/bit64-package.html" class="external-link">bit64::integer64</a></code> rather
+than double, so <code>order_id</code>, <code>raw_instrument_id</code> and an undefined
+statistics <code>quantity</code> survive intact.</p>
+<p>Row order is the server's, and the server does not guarantee a stable
+order among records that share a timestamp: two downloads of the same
+slice can return the same rows in a different sequence. Sort on
+<code>ts_event</code>/<code>ts_recv</code> and <code>instrument_id</code> if you need a reproducible order.</p>
     </div>
 
     <div class="section level2">

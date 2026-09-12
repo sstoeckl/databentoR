@@ -69,7 +69,14 @@ table against
 
 Timestamps come back as `POSIXct`, which stores seconds as a double and
 so resolves to about a quarter of a microsecond on modern dates. Pass
-`ts_type = "integer64"` when you need the exact nanosecond count.
+`ts_type = "integer64"` when you need the exact nanosecond count. Fields
+that are 64-bit on the wire are never downcast either, so `order_id` and
+an undefined statistics `quantity` keep their value.
+
+Row order is the server’s own, and the server does not promise a stable
+order among records sharing a timestamp: two downloads of one slice can
+return the same rows in a different sequence. Sort if you need
+reproducibility.
 
 ## Equivalence with the Python client
 

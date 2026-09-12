@@ -191,6 +191,16 @@ which would silently turn every trade action into <code>TRUE</code>.</p>
 <p><code><a href="../reference/db_list_fields.html">db_list_fields()</a></code> is the authoritative list for a given
 schema and dataset, and the live test suite checks the built-in table
 against it.</p>
+<p>Fields that are 64-bit on the wire come back as
+<code><a href="https://bit64.r-lib.org/reference/bit64-package.html" class="external-link">bit64::integer64</a></code> rather than double, so
+<code>order_id</code>, <code>raw_instrument_id</code> and an undefined
+statistics <code>quantity</code> survive intact. The last of those is
+the int64 maximum, which a double silently rounds.</p>
+<p>Row order is the server’s own, and the server does not promise a
+stable order among records that share a timestamp: two downloads of one
+slice can return the same rows in a different sequence. Sort on the
+timestamp and <code>instrument_id</code> if you need a reproducible
+order.</p>
 <div class="section level3">
 <h3 id="nanosecond-timestamps">Nanosecond timestamps<a class="anchor" aria-label="anchor" href="#nanosecond-timestamps"></a>
 </h3>

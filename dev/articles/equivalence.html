@@ -197,7 +197,10 @@ prices, nanosecond timestamps, unsigned counts, single characters and
 fixed-width text.</p>
 <p><code>test-equivalence.R</code> pulls the same slices through
 databentoR and compares row count, column names, column order, then each
-column by kind:</p>
+column by kind. Both frames are sorted first, because the server does
+not promise a stable order among records that share a timestamp: two
+consecutive downloads of the daily-bar slice were measured disagreeing
+on 47 of 49 row positions while holding identical data.</p>
 <ul>
 <li>
 <strong>Prices</strong> to a relative tolerance of
@@ -216,6 +219,12 @@ a genuine scaling or rounding bug cannot hide inside it.</li>
 <strong>Text</strong> exactly, after normalising the empty
 field.</li>
 </ul>
+<p>One full run makes 17 billed downloads, about 0.27 US dollars at the
+rates measured in September 2026. Window size is not a lever: Databento
+bills an intraday request at whole-day granularity, so a one-second and
+a ten-minute window of the same instrument and schema are quoted
+identically. <code>dev/equivalence/quote.R</code> prices a run using
+only the free preview endpoints.</p>
 <p>Layer 2 spends money, so it needs both a key and an explicit
 opt-in:</p>
 <pre><code>DATABENTOR_RUN_LIVE=true Rscript -e 'devtools::test()'</code></pre>
@@ -225,7 +234,9 @@ package CRAN-safe.</p>
 <div class="section level2">
 <h2 id="the-differences-that-remain">The differences that remain<a class="anchor" aria-label="anchor" href="#the-differences-that-remain"></a>
 </h2>
-<p>Five, all documented rather than papered over.</p>
+<p>Five, all documented rather than papered over. Row order is not among
+them: it is unstable on both sides, a property of the service rather
+than of either client.</p>
 <ol style="list-style-type: decimal">
 <li>
 <strong>Index versus column.</strong> <code>to_df()</code> returns a
@@ -242,9 +253,11 @@ quarter of a microsecond. Use <code>ts_type = "integer64"</code> when
 nanoseconds matter.</li>
 <li>
 <strong>Unsigned 64-bit fields.</strong> R has no unsigned integer
-type. <code>order_id</code> and <code>raw_instrument_id</code> are exact
-below <code>2^53</code>; no venue observed so far comes close to
-exceeding it.</li>
+type, so fields that are 64-bit on the wire come back as
+<code><a href="https://bit64.r-lib.org/reference/bit64-package.html" class="external-link">bit64::integer64</a></code>. That is what keeps <code>order_id</code>,
+<code>raw_instrument_id</code> and an undefined statistics
+<code>quantity</code> intact; the last of those is the int64 maximum,
+which no double can hold.</li>
 <li>
 <strong><code>pretty_ts</code> collapses two cases.</strong> The CSV
 encoder writes an empty field both for an undefined timestamp and for a
