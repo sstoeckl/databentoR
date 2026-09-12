@@ -9,7 +9,7 @@ own `col_types` or to check the package against
 ## Usage
 
 ``` r
-db_field_types(fields)
+db_field_types(fields, schema = NULL)
 ```
 
 ## Arguments
@@ -18,6 +18,12 @@ db_field_types(fields)
 
   Character vector of field names, for instance the `name` column of
   [`db_list_fields()`](https://www.sebastianstoeckl.com/databentoR/reference/db_list_fields.md).
+
+- schema:
+
+  Optional schema name. One field is schema-dependent: `action` is a
+  character code in the book and trade schemas and a numeric enum in
+  `status`.
 
 ## Value
 
@@ -36,4 +42,9 @@ db_field_types(c("ts_event", "open", "action", "order_id", "flags"))
 #> 3 action   character
 #> 4 order_id int64    
 #> 5 flags    int32    
+db_field_types("action", schema = "status")
+#> # A tibble: 1 × 2
+#>   name   kind 
+#>   <chr>  <chr>
+#> 1 action int32
 ```

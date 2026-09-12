@@ -52,7 +52,9 @@ the official Python client 0.86.0 on the wire.
   CSV inference reads a `trades` slice whose `action` column is all
   `"T"` as boolean, which would silently corrupt every trade action.
   [`db_field_types()`](https://www.sebastianstoeckl.com/databentoR/reference/db_field_types.md)
-  reports what will be assigned.
+  reports what will be assigned, and takes a `schema` argument because
+  exactly one field name is schema-dependent: `action` is a character
+  code in the trade and book schemas and a numeric enum in `status`.
 - `ts_type = "integer64"` returns exact nanosecond timestamps. The
   default `POSIXct` stores seconds as a double and resolves to about a
   quarter of a microsecond on modern dates.
@@ -83,6 +85,11 @@ the official Python client 0.86.0 on the wire.
   to a relative tolerance of `1e-12`. Both sides are sorted before
   comparison: the server does not promise a stable order among records
   sharing a timestamp, and neither client can.
+- A full live coverage sweep over every exported function: all twenty
+  schemas across three datasets, a batch job submitted, polled,
+  downloaded and compared against the streamed equivalent, symbology for
+  every input symbol type, and the reference endpoints. It runs weekly
+  and on demand, and never on a push.
 - A weekly workflow diffs a new upstream release against the pin and
   files the changed calls as an issue.
 
