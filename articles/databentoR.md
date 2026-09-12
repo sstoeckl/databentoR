@@ -146,6 +146,17 @@ db_field_types(c("ts_recv", "price", "action", "order_id", "flags", "bid_px_00")
 is the authoritative list for a given schema and dataset, and the live
 test suite checks the built-in table against it.
 
+Fields that are 64-bit on the wire come back as
+[`bit64::integer64`](https://bit64.r-lib.org/reference/bit64-package.html)
+rather than double, so `order_id`, `raw_instrument_id` and an undefined
+statistics `quantity` survive intact. The last of those is the int64
+maximum, which a double silently rounds.
+
+Row order is the server’s own, and the server does not promise a stable
+order among records that share a timestamp: two downloads of one slice
+can return the same rows in a different sequence. Sort on the timestamp
+and `instrument_id` if you need a reproducible order.
+
 ### Nanosecond timestamps
 
 `POSIXct` stores seconds as a double, so on modern dates it resolves to

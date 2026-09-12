@@ -104,7 +104,10 @@ fixed-width text.
 
 `test-equivalence.R` pulls the same slices through databentoR and
 compares row count, column names, column order, then each column by
-kind:
+kind. Both frames are sorted first, because the server does not promise
+a stable order among records that share a timestamp: two consecutive
+downloads of the daily-bar slice were measured disagreeing on 47 of 49
+row positions while holding identical data.
 
 - **Prices** to a relative tolerance of `1e-12`. Both paths end at the
   IEEE-754 double nearest to `fixed / 1e9`, one by parsing a
@@ -116,6 +119,13 @@ kind:
 - **Counts, flags and sequence numbers** exactly.
 - **Text** exactly, after normalising the empty field.
 
+One full run makes 17 billed downloads, about 0.27 US dollars at the
+rates measured in September 2026. Window size is not a lever: Databento
+bills an intraday request at whole-day granularity, so a one-second and
+a ten-minute window of the same instrument and schema are quoted
+identically. `dev/equivalence/quote.R` prices a run using only the free
+preview endpoints.
+
 Layer 2 spends money, so it needs both a key and an explicit opt-in:
 
     DATABENTOR_RUN_LIVE=true Rscript -e 'devtools::test()'
@@ -125,7 +135,9 @@ package CRAN-safe.
 
 ## The differences that remain
 
-Five, all documented rather than papered over.
+Five, all documented rather than papered over. Row order is not among
+them: it is unstable on both sides, a property of the service rather
+than of either client.
 
 1.  **Index versus column.** `to_df()` returns a frame indexed by
     `ts_recv` (or `ts_event` for OHLCV). A tibble has no index, so
@@ -135,9 +147,12 @@ Five, all documented rather than papered over.
 3.  **Timestamp resolution.** `POSIXct` is a double count of seconds, so
     on modern dates it resolves to about a quarter of a microsecond. Use
     `ts_type = "integer64"` when nanoseconds matter.
-4.  **Unsigned 64-bit fields.** R has no unsigned integer type.
-    `order_id` and `raw_instrument_id` are exact below `2^53`; no venue
-    observed so far comes close to exceeding it.
+4.  **Unsigned 64-bit fields.** R has no unsigned integer type, so
+    fields that are 64-bit on the wire come back as
+    [`bit64::integer64`](https://bit64.r-lib.org/reference/bit64-package.html).
+    That is what keeps `order_id`, `raw_instrument_id` and an undefined
+    statistics `quantity` intact; the last of those is the int64
+    maximum, which no double can hold.
 5.  **`pretty_ts` collapses two cases.** The CSV encoder writes an empty
     field both for an undefined timestamp and for a literal zero, while
     `to_df()` distinguishes them. `ts_type = "integer64"` requests raw

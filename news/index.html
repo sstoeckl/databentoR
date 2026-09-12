@@ -58,6 +58,7 @@
 <ul><li>Column types are assigned from the field name, never inferred. arrow’s CSV inference reads a <code>trades</code> slice whose <code>action</code> column is all <code>"T"</code> as boolean, which would silently corrupt every trade action. <code><a href="../reference/db_field_types.html">db_field_types()</a></code> reports what will be assigned.</li>
 <li>
 <code>ts_type = "integer64"</code> returns exact nanosecond timestamps. The default <code>POSIXct</code> stores seconds as a double and resolves to about a quarter of a microsecond on modern dates.</li>
+<li>Fields that are 64-bit on the wire come back as <code><a href="https://bit64.r-lib.org/reference/bit64-package.html" class="external-link">bit64::integer64</a></code> instead of being downcast to double, so <code>order_id</code>, <code>raw_instrument_id</code> and an undefined statistics <code>quantity</code> keep their value. The last of those is the int64 maximum, which a double rounds.</li>
 <li>Symbols are normalised as the Python client normalises them: upper-cased, with the roll rule of a continuous symbol lower-cased, <code>NULL</code> becoming <code>ALL_SYMBOLS</code>, and the documented 2000-symbol cap enforced before the request is spent.</li>
 <li>Date parameters reject timestamps, as in the Python client, rather than silently truncating an instant to a day.</li>
 <li>HTTP 206 raises a warning: it is a success code that means only some symbols were resolved.</li>
@@ -66,7 +67,7 @@
 <div class="section level3">
 <h3 id="equivalence-suite-0-1-0">Equivalence suite<a class="anchor" aria-label="anchor" href="#equivalence-suite-0-1-0"></a></h3>
 <ul><li>Wire equivalence against the pinned Python client for all 28 endpoints, offline and free, asserting method, endpoint, and parameter names, values and order. The R value domains are checked against the compiled DBN enums.</li>
-<li>Data equivalence over six tiny slices spanning <code>ohlcv-1d</code>, <code>trades</code>, <code>tbbo</code>, <code>mbp-1</code>, <code>statistics</code> and <code>definition</code>, with prices compared to a relative tolerance of <code>1e-12</code>.</li>
+<li>Data equivalence over six tiny slices spanning <code>ohlcv-1d</code>, <code>trades</code>, <code>tbbo</code>, <code>mbp-1</code>, <code>statistics</code> and <code>definition</code>, with prices compared to a relative tolerance of <code>1e-12</code>. Both sides are sorted before comparison: the server does not promise a stable order among records sharing a timestamp, and neither client can.</li>
 <li>A weekly workflow diffs a new upstream release against the pin and files the changed calls as an issue.</li>
 </ul><p>Downloaded market data is never committed; the reference fixtures stay untracked.</p>
 </div>

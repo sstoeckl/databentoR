@@ -108,7 +108,8 @@
 <h2 id="why-the-types-are-never-guessed">Why the types are never guessed<a class="anchor" aria-label="anchor" href="#why-the-types-are-never-guessed"></a>
 </h2>
 <p>Column types are assigned from the field name rather than inferred. That is not fussiness: a <code>trades</code> slice whose <code>action</code> column happens to be all <code>"T"</code> infers as boolean, which would silently turn every trade action into <code>TRUE</code>. <code><a href="reference/db_field_types.html">db_field_types()</a></code> reports what databentoR will assign, and the live test suite checks that table against <code><a href="reference/db_list_fields.html">db_list_fields()</a></code>.</p>
-<p>Timestamps come back as <code>POSIXct</code>, which stores seconds as a double and so resolves to about a quarter of a microsecond on modern dates. Pass <code>ts_type = "integer64"</code> when you need the exact nanosecond count.</p>
+<p>Timestamps come back as <code>POSIXct</code>, which stores seconds as a double and so resolves to about a quarter of a microsecond on modern dates. Pass <code>ts_type = "integer64"</code> when you need the exact nanosecond count. Fields that are 64-bit on the wire are never downcast either, so <code>order_id</code> and an undefined statistics <code>quantity</code> keep their value.</p>
+<p>Row order is the server’s own, and the server does not promise a stable order among records sharing a timestamp: two downloads of one slice can return the same rows in a different sequence. Sort if you need reproducibility.</p>
 </div>
 <div class="section level2">
 <h2 id="equivalence-with-the-python-client">Equivalence with the Python client<a class="anchor" aria-label="anchor" href="#equivalence-with-the-python-client"></a>

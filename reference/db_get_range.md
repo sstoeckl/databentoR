@@ -129,6 +129,17 @@ inferred. Inference is unsafe here: a `trades` slice whose `action`
 column is all `"T"` would otherwise be read as boolean. See
 [`db_field_types()`](https://www.sebastianstoeckl.com/databentoR/reference/db_field_types.md).
 
+Fields that are 64-bit on the wire come back as
+[`bit64::integer64`](https://bit64.r-lib.org/reference/bit64-package.html)
+rather than double, so `order_id`, `raw_instrument_id` and an undefined
+statistics `quantity` survive intact.
+
+Row order is the server's, and the server does not guarantee a stable
+order among records that share a timestamp: two downloads of the same
+slice can return the same rows in a different sequence. Sort on
+`ts_event`/`ts_recv` and `instrument_id` if you need a reproducible
+order.
+
 ## Examples
 
 ``` r
