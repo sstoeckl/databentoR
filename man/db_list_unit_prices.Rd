@@ -16,8 +16,10 @@ returned unchanged and a warning is raised.
 }
 \description{
 Free of charge. Mirrors \code{metadata.list_unit_prices}. Prices are US dollars
-per gigabyte, per feed mode and schema. \code{\link[=db_get_cost]{db_get_cost()}} already accounts
-for plan discounts, so a quote is not simply size times unit price.
+per \strong{gibibyte} (2^30 bytes), per feed mode and schema, not per decimal
+gigabyte. Measured on 2026-09-12, a quote equals
+\code{db_get_billable_size() / 2^30 * unit_price} to six decimal places, so
+dividing by 1e9 instead overstates the cost by about 7\%.
 }
 \examples{
 \dontrun{
