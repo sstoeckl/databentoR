@@ -1,37 +1,107 @@
-"""QA-ONLY reference builder (the only tolerated Python in this repo).
+"""Freeze reference slices with the official Databento Python client.
 
-Freezes tiny slices via the OFFICIAL Databento Python client as parquet
-fixtures for tests/testthat/test-equivalence.R. Never commit the output
-(Databento data must not be redistributed) — reference/ is gitignored.
+This is the QA half of the data-equivalence protocol: it downloads a handful
+of deliberately tiny slices through the pinned client (`dev/python-reference`)
+and writes each as parquet, in the shape `tests/testthat/test-equivalence.R`
+expects. The R client then downloads the same slices and the two tables are
+compared column by column.
+
+The output is NEVER committed. Databento's licence does not permit
+redistributing market data, so `dev/equivalence/reference/` is gitignored.
 
 Usage:
-    pip install --user databento pyarrow pandas   # QA machine only
+    pip install ./dev/python-reference pyarrow pandas
     python dev/equivalence/make_reference.py
 """
-from pathlib import Path
+
+from __future__ import annotations
+
+import json
+import pathlib
 
 import databento as db
 
-REF = Path(__file__).resolve().parent / "reference"
+REF = pathlib.Path(__file__).resolve().parent / "reference"
 REF.mkdir(exist_ok=True)
 
+# name, dataset, schema, symbols, stype_in, start, end
 SLICES = [
-    ("glbx_es_ohlcv1d_2024-01", "GLBX.MDP3", "ohlcv-1d", ["ES.FUT"], "2024-01-01", "2024-02-01"),
-    ("glbx_zq_ohlcv1d_2024-01", "GLBX.MDP3", "ohlcv-1d", ["ZQ.FUT"], "2024-01-01", "2024-02-01"),
-    ("opra_djt_ohlcv1d_2024-10-w1", "OPRA.PILLAR", "ohlcv-1d", ["DJT.OPT"], "2024-10-01", "2024-10-08"),
+    ("glbx_es_ohlcv1d", "GLBX.MDP3", "ohlcv-1d", ["ES.FUT"], "parent",
+     "2024-01-02", "2024-01-09"),
+    ("glbx_es_trades", "GLBX.MDP3", "trades", ["ES.c.0"], "continuous",
+     "2024-01-02T14:30", "2024-01-02T14:31"),
+    ("glbx_es_tbbo", "GLBX.MDP3", "tbbo", ["ES.c.0"], "continuous",
+     "2024-01-02T14:30", "2024-01-02T14:31"),
+    ("glbx_es_mbp1", "GLBX.MDP3", "mbp-1", ["ES.c.0"], "continuous",
+     "2024-01-02T14:30", "2024-01-02T14:30:30"),
+    ("glbx_es_statistics", "GLBX.MDP3", "statistics", ["ES.FUT"], "parent",
+     "2024-01-02", "2024-01-03"),
+    ("glbx_es_definition", "GLBX.MDP3", "definition", ["ES.FUT"], "parent",
+     "2024-01-02", "2024-01-03"),
 ]
 
-client = db.Historical()  # reads DATABENTO_API_KEY from the environment
+BUDGET_USD = 0.50
 
-for name, dataset, schema, symbols, start, end in SLICES:
-    cost = client.metadata.get_cost(dataset=dataset, symbols=symbols, schema=schema,
-                                    start=start, end=end, stype_in="parent")
-    print(f"{name}: quoted cost {cost:.6f} USD")
-    store = client.timeseries.get_range(dataset=dataset, schema=schema, symbols=symbols,
-                                        stype_in="parent", start=start, end=end)
-    df = store.to_df(pretty_px=True, pretty_ts=True, map_symbols=True)
-    out = REF / f"{name}.parquet"
-    df.to_parquet(out)
-    print(f"  -> {out} ({len(df)} rows)")
 
-print("Done. Fixtures are UNTRACKED by design — do not commit them.")
+def main() -> int:
+    client = db.Historical()  # reads DATABENTO_API_KEY from the environment
+
+    quotes = {}
+    total = 0.0
+    for name, dataset, schema, symbols, stype_in, start, end in SLICES:
+        cost = client.metadata.get_cost(
+            dataset=dataset, symbols=symbols, schema=schema,
+            stype_in=stype_in, start=start, end=end,
+        )
+        quotes[name] = cost
+        total += cost
+        print(f"{name}: quoted {cost:.6f} USD")
+
+    print(f"total quoted: {total:.6f} USD")
+    if total > BUDGET_USD:
+        raise SystemExit(
+            f"Refusing to download: {total:.4f} USD exceeds the "
+            f"{BUDGET_USD:.2f} USD budget for reference fixtures."
+        )
+
+    manifest = {
+        "databento_python_version": db.__version__,
+        "budget_usd": BUDGET_USD,
+        "total_quoted_usd": round(total, 6),
+        "slices": {},
+    }
+
+    for name, dataset, schema, symbols, stype_in, start, end in SLICES:
+        store = client.timeseries.get_range(
+            dataset=dataset, schema=schema, symbols=symbols,
+            stype_in=stype_in, start=start, end=end,
+        )
+        # price_type="float" is the modern spelling of pretty_px=True;
+        # reset_index turns the ts_recv/ts_event index back into the first
+        # column, which is where the CSV encoding puts it.
+        frame = store.to_df(price_type="float", pretty_ts=True,
+                            map_symbols=True).reset_index()
+        out = REF / f"{name}.parquet"
+        frame.to_parquet(out)
+        manifest["slices"][name] = {
+            "dataset": dataset,
+            "schema": schema,
+            "symbols": symbols,
+            "stype_in": stype_in,
+            "start": start,
+            "end": end,
+            "rows": int(len(frame)),
+            "columns": list(frame.columns),
+            "quoted_usd": round(quotes[name], 6),
+        }
+        print(f"  -> {out.name} ({len(frame)} rows, {len(frame.columns)} cols)")
+
+    (REF / "manifest.json").write_text(
+        json.dumps(manifest, indent=2) + "\n", encoding="utf-8"
+    )
+    print("Done. Fixtures are untracked by design - do not commit them.")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

@@ -1,0 +1,168 @@
+---
+title: "Equivalence with the official Python client"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Equivalence with the official Python client}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+library(databentoR)
+```
+
+A second implementation of an API is only worth having if you can show it
+agrees with the first. databentoR makes that a test rather than a claim.
+
+The official client is pinned as a git submodule at `dev/python-reference`, so
+every fixture in the repository describes one exact version of it. Two
+independent layers check agreement, and a third watches for the reference
+moving underneath us.
+
+## Layer 1: the same request
+
+`dev/equivalence/wire_capture.py` imports the pinned Python client, replaces
+its HTTP transport with a stub that records the call and aborts it, and walks
+all 28 endpoints of the historical and reference APIs. No network, no API key,
+no money.
+
+The recording is committed as `tests/testthat/fixtures/python_wire.json`. It
+contains endpoint names, parameter names and parameter values from synthetic
+arguments, plus the compiled DBN enum value sets. No market data and no
+credentials.
+
+`test-wire.R` then builds the same request in R for every entry and asserts
+the HTTP method, the endpoint, and the parameter names, values **and order**.
+For example, the Python client's own test suite pins this body for
+`metadata.get_record_count`:
+
+```
+dataset=GLBX.MDP3&symbols=ESH1&schema=mbo&start=2020-12-28T12:00
+&end=2020-12-29&stype_in=raw_symbol&limit=1000000
+```
+
+and databentoR produces it field for field, in that order, from
+
+```{r eval = FALSE}
+db_get_record_count("GLBX.MDP3", start = "2020-12-28T12:00", end = "2020-12-29",
+                    symbols = "ESH1", schema = "mbo", limit = 1000000)
+```
+
+This layer runs on every push, on three operating systems, at no cost. It
+catches the things that are easy to get wrong and hard to notice:
+
+* Three `metadata.get_*` endpoints are POSTs with a form body, not GETs,
+  despite what their docstrings say.
+* `get_cost` and `get_billable_size` always pin `stype_out=instrument_id`;
+  `get_record_count` sends no `stype_out` at all.
+* Form-body booleans go on the wire as `True`/`False`, while the
+  text-encoding flags are lower-case `true`/`false`.
+* An omitted `end` must be dropped from the body, not sent empty, because the
+  server forward-fills from `start` when it is absent.
+* `symbols = NULL` becomes the literal string `ALL_SYMBOLS`.
+
+It also asserts that `db_schemas()`, `db_encodings()` and `db_compressions()`
+still equal the compiled DBN enums, so a schema added upstream fails the test
+suite rather than a user's request.
+
+```{r}
+db_schemas()
+```
+
+### The one deliberate divergence
+
+`timeseries.get_range` is where the clients differ on purpose. The Python
+client hard-codes `encoding=dbn` with `compression=zstd` and decodes the
+binary format locally. databentoR asks for `encoding=csv` and sends the three
+text-encoding flags the HTTP API documents for this endpoint, because the
+server defaults all three to false:
+
+| Parameter | Python client | databentoR |
+|---|---|---|
+| `encoding` | `dbn` | `csv` |
+| `compression` | `zstd` | `none` by default, `zstd` on request |
+| `pretty_px` | not sent | `true` |
+| `pretty_ts` | not sent | `true` |
+| `map_symbols` | not sent | `true` |
+
+Every other parameter still has to match, and the test asserts the divergence
+is exactly this and nothing more.
+
+## Layer 2: the same data
+
+`dev/equivalence/make_reference.py` downloads six deliberately tiny slices
+through the pinned Python client and freezes each as parquet in the shape
+`to_df()` produces: `price_type="float"`, `pretty_ts`, `map_symbols`, then
+`reset_index()`, because `to_df()` makes the leading timestamp the frame's
+index while the CSV encoding keeps it as the first column. The script refuses
+to download anything if the quoted total exceeds fifty US cents.
+
+The slices span `ohlcv-1d`, `trades`, `tbbo`, `mbp-1`, `statistics` and
+`definition`, which between them exercise every column kind: prices,
+nanosecond timestamps, unsigned counts, single characters and fixed-width
+text.
+
+`test-equivalence.R` pulls the same slices through databentoR and compares row
+count, column names, column order, then each column by kind:
+
+* **Prices** to a relative tolerance of `1e-12`. Both paths end at the
+  IEEE-754 double nearest to `fixed / 1e9`, one by parsing a nine-decimal
+  string and one by dividing an int64, and they agree bit for bit below
+  `2^53`. The tolerance is loose enough never to fire on that, and roughly a
+  thousand times tighter than one unit of the 1e-9 grid, so a genuine scaling
+  or rounding bug cannot hide inside it.
+* **Timestamps** as instants, exactly when `ts_type = "integer64"`.
+* **Counts, flags and sequence numbers** exactly.
+* **Text** exactly, after normalising the empty field.
+
+Layer 2 spends money, so it needs both a key and an explicit opt-in:
+
+```
+DATABENTOR_RUN_LIVE=true Rscript -e 'devtools::test()'
+```
+
+Without fixtures or a key it skips cleanly, which is what keeps the package
+CRAN-safe.
+
+## The differences that remain
+
+Five, all documented rather than papered over.
+
+1. **Index versus column.** `to_df()` returns a frame indexed by `ts_recv`
+   (or `ts_event` for OHLCV). A tibble has no index, so databentoR keeps that
+   field as the first column, which is where the CSV encoding puts it anyway.
+2. **Empty text fields** are `""` in pandas and `NA` in R.
+3. **Timestamp resolution.** `POSIXct` is a double count of seconds, so on
+   modern dates it resolves to about a quarter of a microsecond. Use
+   `ts_type = "integer64"` when nanoseconds matter.
+4. **Unsigned 64-bit fields.** R has no unsigned integer type. `order_id` and
+   `raw_instrument_id` are exact below `2^53`; no venue observed so far comes
+   close to exceeding it.
+5. **`pretty_ts` collapses two cases.** The CSV encoder writes an empty field
+   both for an undefined timestamp and for a literal zero, while `to_df()`
+   distinguishes them. `ts_type = "integer64"` requests raw timestamps and
+   keeps the distinction.
+
+## Layer 3: watching the reference
+
+A weekly workflow compares the pinned submodule with the newest upstream
+release. When there is a new one it re-captures the wire fixture against that
+release, diffs it against the committed fixture, and opens an issue naming the
+parameters, endpoints and enum values that changed, with the changelog delta
+attached.
+
+So the alert is never "a new version exists". It is "these are the calls you
+have to fix".
+
+## Reproducing it
+
+```
+git submodule update --init --recursive
+pip install ./dev/python-reference
+python dev/equivalence/wire_capture.py
+Rscript -e 'devtools::test()'
+```
+
+The full protocol, including how to add a slice, is in
+`dev/equivalence/README.md`.

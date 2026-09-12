@@ -3,7 +3,12 @@
 .RData
 .Ruserdata
 *.Rcheck/
+.DS_Store
+Rplots.pdf
 CLAUDE.md
-dev/equivalence/reference/
-inst/doc
 docs
+inst/doc
+/doc/
+/Meta/
+# Downloaded Databento market data must never be committed (licence!)
+dev/equivalence/reference/

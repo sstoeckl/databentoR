@@ -1,0 +1,4 @@
+[submodule "dev/python-reference"]
+	path = dev/python-reference
+	url = https://github.com/databento/databento-python.git
+	branch = main

@@ -4,5 +4,16 @@
 ^LICENSE\.md$
 ^.*\.Rproj$
 ^\.Rproj\.user$
+^\.claude$
 ^docs$
+^pkgdown$
 ^_pkgdown\.yml$
+^README\.Rmd$
+^CITATION\.cff$
+^\.gitmodules$
+^doc$
+^Meta$
+^codemeta\.json$
+^Rplots\.pdf$
+^vignettes/articles$
+^revdep$

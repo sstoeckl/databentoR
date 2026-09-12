@@ -1,35 +1,115 @@
-# Weekly equivalence check: official Python client vs. databentoR.
-# Requires repo secret DATABENTO_API_KEY. Activates once the repo is on
-# GitHub (sstoeckl/databentoR) — pushing there needs Sebastian's go-ahead.
+# Equivalence vs. the official Databento Python client.
+#
+# Two independent layers:
+#   1. wire  — offline, no API key, no cost. Replays the pinned Python client
+#              (git submodule dev/python-reference) with its HTTP transport
+#              mocked out, captures the exact URL + query parameters it would
+#              send, and compares them byte-for-byte with what databentoR
+#              builds. Runs on every push and PR.
+#   2. data  — live, needs repo secret DATABENTO_API_KEY. Downloads tiny
+#              reference slices with the Python client, then the same slices
+#              with databentoR, and compares the tables 1:1. Weekly + manual.
 name: equivalence
 
 on:
+  push:
+    branches: [ main, master, dev ]
+  pull_request:
+    branches: [ main, master ]
   schedule:
     - cron: "17 5 * * 1"   # Mondays 05:17 UTC
-  workflow_dispatch:
+  workflow_dispatch: {}
 
 jobs:
-  equivalence:
+  wire:
+    name: wire equivalence (offline, no key)
     runs-on: ubuntu-latest
-    if: github.repository_owner == 'sstoeckl'
-    env:
-      DATABENTO_API_KEY: ${{ secrets.DATABENTO_API_KEY }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Build Python reference fixtures
+
+      - name: Install the pinned Python client from the submodule
         run: |
-          pip install databento pyarrow pandas
+          python -m pip install --upgrade pip
+          pip install ./dev/python-reference
+
+      - name: Re-capture the Python wire fixture
+        run: python dev/equivalence/wire_capture.py --out tests/testthat/fixtures/python_wire.json
+
+      - name: Fail if the committed wire fixture is stale
+        run: |
+          if ! git diff --quiet -- tests/testthat/fixtures/python_wire.json; then
+            echo "::error::The committed wire fixture no longer matches the pinned Python client."
+            echo "Run: python dev/equivalence/wire_capture.py  and commit the result."
+            git --no-pager diff -- tests/testthat/fixtures/python_wire.json
+            exit 1
+          fi
+
+      - uses: r-lib/actions/setup-r@v2
+        with: { use-public-rspm: true }
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: any::testthat, local::.
+          needs: check
+
+      - name: Compare databentoR requests against the Python wire fixture
+        run: |
+          testthat::test_local(
+            path = "tests/testthat",
+            filter = "wire",
+            stop_on_failure = TRUE,
+            load_package = "installed"
+          )
+        shell: Rscript {0}
+
+  data:
+    name: data equivalence (live, needs key)
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    env:
+      DATABENTO_API_KEY: ${{ secrets.DATABENTO_API_KEY }}
+      DATABENTOR_RUN_LIVE: "true"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Skip when no key is configured
+        id: guard
+        run: |
+          if [ -z "${DATABENTO_API_KEY}" ]; then
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::DATABENTO_API_KEY not set - live equivalence skipped."
+          else
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/setup-python@v5
+        if: steps.guard.outputs.run == 'true'
+        with:
+          python-version: "3.12"
+
+      - name: Build Python reference fixtures
+        if: steps.guard.outputs.run == 'true'
+        run: |
+          python -m pip install --upgrade pip
+          pip install ./dev/python-reference pyarrow pandas
           python dev/equivalence/make_reference.py
 
       - uses: r-lib/actions/setup-r@v2
-        with:
-          use-public-rspm: true
+        if: steps.guard.outputs.run == 'true'
+        with: { use-public-rspm: true }
       - uses: r-lib/actions/setup-r-dependencies@v2
+        if: steps.guard.outputs.run == 'true'
         with:
           extra-packages: any::devtools
-      - name: Run R tests incl. equivalence
+          needs: check
+
+      - name: Run the full R suite incl. live equivalence
+        if: steps.guard.outputs.run == 'true'
         run: Rscript -e 'devtools::test(stop_on_failure = TRUE)'

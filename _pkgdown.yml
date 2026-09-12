@@ -1,0 +1,59 @@
+url: https://www.sebastianstoeckl.com/databentoR/
+template:
+  bootstrap: 5
+  bootswatch: spacelab
+navbar:
+  bg: primary
+reference:
+- title: Authentication
+  contents:
+  - db_has_key
+- title: Metadata
+  desc: >
+    Discovery and previews. Every endpoint here is free of charge, which is
+    why a cost preview belongs in front of every download.
+  contents:
+  - db_list_publishers
+  - db_list_datasets
+  - db_list_schemas
+  - db_list_fields
+  - db_list_unit_prices
+  - db_get_dataset_condition
+  - db_get_dataset_range
+  - db_get_record_count
+  - db_get_billable_size
+  - db_get_cost
+- title: Time series
+  desc: The one billed endpoint, and the column types it assigns.
+  contents:
+  - db_get_range
+  - db_field_types
+- title: Symbology
+  contents:
+  - db_resolve
+- title: Batch jobs
+  desc: Asynchronous delivery for requests too large to stream.
+  contents:
+  - db_batch_submit_job
+  - db_batch_get_job_details
+  - db_batch_list_jobs
+  - db_batch_list_files
+  - db_batch_download
+- title: Reference data
+  desc: Corporate actions, adjustment factors and the security master.
+  contents:
+  - db_adjustment_factors
+  - db_corporate_actions
+  - db_corporate_action_events
+  - db_corporate_action_enums
+  - db_security_master
+  - db_security_master_last
+- title: Value domains
+  contents:
+  - db_enums
+articles:
+- title: Articles
+  navbar: ~
+  contents:
+  - databentoR
+  - equivalence
