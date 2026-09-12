@@ -9,6 +9,14 @@
 #   2. data  — live, needs repo secret DATABENTO_API_KEY. Downloads tiny
 #              reference slices with the Python client, then the same slices
 #              with databentoR, and compares the tables 1:1. Weekly + manual.
+#   3. coverage — live. Exercises every exported function against the real
+#              API: all twenty schemas across three datasets, a batch job end
+#              to end, symbology for every input symbol type, and the
+#              reference endpoints. Weekly + manual.
+#
+# Measured 2026-09-12: the data job costs about 0.27 USD a run and the
+# coverage job about 0.40 USD, so both together are roughly 35 USD a year on
+# a weekly schedule. Change the cron to "17 5 1 * *" for monthly.
 name: equivalence
 
 on:
@@ -113,3 +121,37 @@ jobs:
       - name: Run the full R suite incl. live equivalence
         if: steps.guard.outputs.run == 'true'
         run: Rscript -e 'devtools::test(stop_on_failure = TRUE)'
+
+  coverage:
+    name: full live coverage (every endpoint)
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    env:
+      DATABENTO_API_KEY: ${{ secrets.DATABENTO_API_KEY }}
+      DATABENTOR_RUN_COVERAGE: "true"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Skip when no key is configured
+        id: guard
+        run: |
+          if [ -z "${DATABENTO_API_KEY}" ]; then
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::DATABENTO_API_KEY not set - coverage sweep skipped."
+          else
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: r-lib/actions/setup-r@v2
+        if: steps.guard.outputs.run == 'true'
+        with: { use-public-rspm: true }
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        if: steps.guard.outputs.run == 'true'
+        with:
+          extra-packages: any::devtools
+          needs: check
+
+      - name: Exercise every exported function against the live API
+        if: steps.guard.outputs.run == 'true'
+        run: |
+          Rscript -e 'devtools::test(filter = "coverage", stop_on_failure = TRUE)'

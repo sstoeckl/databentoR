@@ -4,9 +4,9 @@
 # metadata.get_cost, which is free. Nothing is downloaded and nothing is
 # billed by running this.
 #
-# Note that shrinking a window does not reduce the quote: Databento bills an
-# intraday request at whole-day granularity, so the cost is driven by how many
-# distinct schema-days are fetched and how often, not by the window length.
+# Databento bills intraday requests in 15-minute chunks, so shrinking a window
+# below a quarter of an hour does not reduce the quote. Beyond that the cost
+# scales with the window.
 #
 #   Rscript dev/equivalence/quote.R
 #

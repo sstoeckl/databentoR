@@ -55,9 +55,23 @@
   "leg_ratio_qty_numerator", "leg_ratio_qty_denominator"
 )
 
+# A field name implies one type everywhere but in a single case: `action` is
+# a character code in the book and trade schemas and a numeric enum in
+# `status`. Reading it as text there would silently disagree with the Python
+# client, so the lookup takes the schema into account.
+.db_schema_overrides <- list(
+  status = c(action = "int32")
+)
+
 # Level-suffixed book fields: bid_px_00 .. ask_ct_09, and the publisher-id
 # variants of the consolidated schemas.
-.db_field_kind <- function(name) {
+.db_field_kind <- function(name, schema = NULL) {
+  if (!is.null(schema)) {
+    override <- .db_schema_overrides[[schema]]
+    if (!is.null(override) && name %in% names(override)) {
+      return(unname(override[[name]]))
+    }
+  }
   if (name %in% .db_ts_fields) return("timestamp")
   if (name %in% .db_px_fields) return("price")
   if (name %in% .db_chr_fields) return("character")
@@ -76,23 +90,28 @@
 #'
 #' @param fields Character vector of field names, for instance the `name`
 #'   column of [db_list_fields()].
+#' @param schema Optional schema name. One field is schema-dependent:
+#'   `action` is a character code in the book and trade schemas and a numeric
+#'   enum in `status`.
 #' @return A tibble with `name` and `kind`, where `kind` is one of
 #'   `"timestamp"`, `"price"`, `"character"`, `"int64"` or `"int32"`.
 #' @examples
 #' db_field_types(c("ts_event", "open", "action", "order_id", "flags"))
+#' db_field_types("action", schema = "status")
 #' @export
-db_field_types <- function(fields) {
+db_field_types <- function(fields, schema = NULL) {
   tibble::tibble(
     name = as.character(fields),
     kind = vapply(as.character(fields), .db_field_kind, character(1),
-                  USE.NAMES = FALSE)
+                  schema = schema, USE.NAMES = FALSE)
   )
 }
 
 # Build the arrow schema for a set of CSV column names.
-.db_arrow_schema <- function(names, pretty_px = TRUE, pretty_ts = TRUE) {
+.db_arrow_schema <- function(names, pretty_px = TRUE, pretty_ts = TRUE,
+                            schema = NULL) {
   types <- lapply(names, function(nm) {
-    switch(.db_field_kind(nm),
+    switch(.db_field_kind(nm, schema),
       # Raw timestamps are unsigned 64-bit and the undefined sentinel is
       # 2^64-1, which no signed R type holds, so they stay text.
       timestamp = if (pretty_ts) arrow::timestamp("ns", "UTC") else arrow::utf8(),

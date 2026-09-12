@@ -47,15 +47,14 @@ test_that("the built-in column types agree with metadata.list_fields", {
     fields <- db_list_fields(schema, "csv", dataset = "GLBX.MDP3")
     expect_s3_class(fields, "tbl_df")
     expect_true("name" %in% names(fields))
-    kinds <- db_field_types(fields$name)
-    # Nothing may be classified by accident: every field the API reports as a
-    # timestamp or a price must be classified as such.
-    if ("type" %in% names(fields)) {
-      ts_api <- fields$name[grepl("time|^ts_", fields$type, ignore.case = TRUE)]
-      ts_api <- setdiff(ts_api, "ts_in_delta")
-      expect_true(all(kinds$kind[kinds$name %in% ts_api] == "timestamp"),
-                  label = paste(schema, "timestamp fields"))
-    }
+    # The API reports only "int" or "string". The text/number split is the one
+    # it can settle, and the one that corrupts data silently when wrong.
+    kinds <- db_field_types(fields$name, schema = schema)$kind
+    is_text <- fields$type == "string"
+    expect_equal(kinds[is_text], rep("character", sum(is_text)),
+                 label = paste(schema, "fields the API calls string"))
+    expect_false(any(kinds[!is_text] == "character"),
+                 label = paste(schema, "fields the API calls int"))
   }
 })
 

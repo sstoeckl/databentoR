@@ -26,11 +26,11 @@ REF.mkdir(exist_ok=True)
 
 # name, dataset, schema, symbols, stype_in, start, end
 #
-# Window sizes are chosen for coverage, not for cost: Databento bills an
-# intraday request at whole-day granularity, so a one-second window and a
-# one-minute window of the same instrument and schema are quoted identically.
-# Measured 2026-09-12: ES.c.0 trades quotes 0.029645 USD for any window
-# inside 2024-01-02.
+# Windows are sized for coverage, within the billing floor: Databento bills
+# intraday requests in 15-minute chunks, so any window inside one chunk of the
+# same instrument and schema is quoted identically. Measured 2026-09-12:
+# ES.c.0 trades quotes 0.029645 USD for any window from 14:30 ending at or
+# before 14:44, and 0.467668 USD for the whole day.
 SLICES = [
     ("glbx_es_ohlcv1d", "GLBX.MDP3", "ohlcv-1d", ["ES.FUT"], "parent",
      "2024-01-02", "2024-01-09"),

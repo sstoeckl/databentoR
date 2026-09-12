@@ -102,7 +102,8 @@ db_get_range <- function(dataset, start, end = NULL, symbols = NULL,
   .db_perform(req, path = tmp)
 
   tb <- .db_read_csv(tmp, compression = compression, pretty_px = pretty_px,
-                     pretty_ts = pretty_ts, col_types = col_types)
+                     pretty_ts = pretty_ts, col_types = col_types,
+                     schema = schema)
   if (identical(ts_type, "integer64")) tb <- .db_ts_integer64(tb)
 
   if (!is.null(path)) {
@@ -129,7 +130,7 @@ db_get_range <- function(dataset, start, end = NULL, symbols = NULL,
 
 # Read a Databento CSV slice with explicit column types.
 .db_read_csv <- function(file, compression = "none", pretty_px = TRUE,
-                         pretty_ts = TRUE, col_types = NULL) {
+                         pretty_ts = TRUE, col_types = NULL, schema = NULL) {
   # arrow downcasts 64-bit integers to double by default, which silently
   # mangles the fields that genuinely need the range: order_id and
   # raw_instrument_id are unsigned 64-bit, and an undefined statistics
@@ -144,7 +145,7 @@ db_get_range <- function(dataset, start, end = NULL, symbols = NULL,
   header <- .db_csv_header(file, compression)
   if (!length(header)) return(tibble::tibble())
 
-  sch <- col_types %||% .db_arrow_schema(header, pretty_px, pretty_ts)
+  sch <- col_types %||% .db_arrow_schema(header, pretty_px, pretty_ts, schema)
   tb <- arrow::read_csv_arrow(input, schema = sch, skip = 1L,
                               as_data_frame = TRUE)
   tibble::as_tibble(tb)

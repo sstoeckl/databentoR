@@ -161,12 +161,17 @@ Measured on 2026-09-12, GLBX.MDP3:
 One full scheduled run makes 17 billed downloads, roughly 0.27 USD, because
 the Python fixture builder and the R suite each fetch the set.
 
-**Window size is not a cost lever.** Databento bills an intraday request at
-whole-day granularity: a one-second and a ten-minute window of the same
-instrument and schema quote identically, and both report the whole day's
-record count. Shrinking a slice buys nothing, so the windows here are sized
-for column coverage instead. The levers that do work are the number of
-distinct schema-days and how often the workflow runs.
+**Windows are billed in 15-minute chunks.** Measured on 2026-09-12 with
+ES.c.0 trades starting at 14:30: windows ending at 14:31, 14:35 and 14:40 all
+quote 0.029645 USD over 23,684 records; ending at 14:45 or 14:50 quotes
+0.050340 over 40,217; ending at 14:55, 0.066971 over 53,504. So anything
+shorter than a quarter of an hour costs the same as a quarter of an hour, and
+beyond that the cost scales with the window. A whole day of the same
+instrument and schema is 0.467668 USD, about sixteen times one chunk.
+
+The practical rule: keep a slice inside one 15-minute chunk and you are at the
+floor for that schema; the remaining levers are how many schemas you touch and
+how often.
 
 `Rscript dev/equivalence/quote.R` prices the whole run for you, using only the
 free preview endpoints.

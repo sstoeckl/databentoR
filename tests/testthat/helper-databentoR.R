@@ -46,3 +46,13 @@ skip_unless_live <- function() {
     "set DATABENTOR_RUN_LIVE=true to run billed live tests"
   )
 }
+
+# The full live coverage sweep costs about 0.40 USD a pass, so it never runs
+# by accident and no GitHub workflow sets this.
+skip_unless_coverage <- function() {
+  skip_if_no_key()
+  testthat::skip_if_not(
+    identical(tolower(Sys.getenv("DATABENTOR_RUN_COVERAGE")), "true"),
+    "set DATABENTOR_RUN_COVERAGE=true to run the full billed coverage sweep"
+  )
+}

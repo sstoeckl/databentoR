@@ -4,11 +4,15 @@
 \alias{db_field_types}
 \title{Column types databentoR gives a CSV download}
 \usage{
-db_field_types(fields)
+db_field_types(fields, schema = NULL)
 }
 \arguments{
 \item{fields}{Character vector of field names, for instance the \code{name}
 column of \code{\link[=db_list_fields]{db_list_fields()}}.}
+
+\item{schema}{Optional schema name. One field is schema-dependent:
+\code{action} is a character code in the book and trade schemas and a numeric
+enum in \code{status}.}
 }
 \value{
 A tibble with \code{name} and \code{kind}, where \code{kind} is one of
@@ -22,4 +26,5 @@ want to pass your own \code{col_types} or to check the package against
 }
 \examples{
 db_field_types(c("ts_event", "open", "action", "order_id", "flags"))
+db_field_types("action", schema = "status")
 }

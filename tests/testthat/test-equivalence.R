@@ -104,7 +104,7 @@ test_that("databentoR returns the same table as the Python client", {
     ref <- stable_order(ref)
     for (col in names(got)) {
       expect_column_equal(got[[col]], ref[[col]],
-                          db_field_types(col)$kind,
+                          db_field_types(col, schema = spec$schema)$kind,
                           label = paste(name, col))
     }
   }

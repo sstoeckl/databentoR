@@ -120,3 +120,28 @@ test_that("db_field_types() classifies the documented field names", {
                           "price", "int64", "int64", "character",
                           "int64", "int32"))
 })
+
+test_that("the one schema-dependent field is typed per schema", {
+  # `action` is a character code in the trade and book schemas but a numeric
+  # enum in `status`. This is the only name in the API whose type depends on
+  # the schema, so it is the only thing the override table carries.
+  expect_equal(db_field_types("action")$kind, "character")
+  expect_equal(db_field_types("action", schema = "trades")$kind, "character")
+  expect_equal(db_field_types("action", schema = "status")$kind, "int32")
+
+  csv <- paste(
+    "ts_recv,ts_event,rtype,publisher_id,instrument_id,action,reason,trading_event,is_trading,is_quoting,is_short_sell_restricted,symbol",
+    "2024-01-02T13:00:00.000000000Z,2024-01-02T13:00:00.000000000Z,23,1,5482,1,0,0,Y,Y,~,ESH4",
+    sep = "\n"
+  )
+  path <- withr::local_tempfile(fileext = ".csv")
+  writeLines(csv, path)
+
+  status <- databentoR:::.db_read_csv(path, schema = "status")
+  expect_true(is.numeric(status$action))
+  expect_type(status$is_trading, "character")
+
+  # without the schema the name alone wins, which is the trade reading
+  plain <- databentoR:::.db_read_csv(path)
+  expect_type(plain$action, "character")
+})
