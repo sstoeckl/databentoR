@@ -1,10 +1,10 @@
 # List the unit prices of a dataset
 
 Free of charge. Mirrors `metadata.list_unit_prices`. Prices are US
-dollars per gigabyte, per feed mode and schema.
-[`db_get_cost()`](https://www.sebastianstoeckl.com/databentoR/reference/db_get_cost.md)
-already accounts for plan discounts, so a quote is not simply size times
-unit price.
+dollars per **gibibyte** (2^30 bytes), per feed mode and schema, not per
+decimal gigabyte. Measured on 2026-09-12, a quote equals
+`db_get_billable_size() / 2^30 * unit_price` to six decimal places, so
+dividing by 1e9 instead overstates the cost by about 7%.
 
 ## Usage
 
