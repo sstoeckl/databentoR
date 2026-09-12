@@ -106,7 +106,10 @@ test_that("zstd transfer gives the same table as an uncompressed one", {
                symbols = "ES.FUT", schema = "ohlcv-1d", stype_in = "parent")
   plain <- do.call(db_get_range, c(args, list(compression = "none")))
   packed <- do.call(db_get_range, c(args, list(compression = "zstd")))
-  expect_equal(packed, plain)
+  # Two separate downloads, and the server does not promise a stable order
+  # among records sharing a timestamp, so order both before comparing.
+  ord <- function(tb) tb[do.call(order, unname(as.list(tb))), , drop = FALSE]
+  expect_equal(ord(packed), ord(plain))
 })
 
 test_that("the parquet path writes the same table it returns", {

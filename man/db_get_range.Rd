@@ -92,6 +92,15 @@ billed twice.
 Column types are assigned explicitly from the field name, never inferred.
 Inference is unsafe here: a \code{trades} slice whose \code{action} column is all
 \code{"T"} would otherwise be read as boolean. See \code{\link[=db_field_types]{db_field_types()}}.
+
+Fields that are 64-bit on the wire come back as \code{bit64::integer64} rather
+than double, so \code{order_id}, \code{raw_instrument_id} and an undefined
+statistics \code{quantity} survive intact.
+
+Row order is the server's, and the server does not guarantee a stable
+order among records that share a timestamp: two downloads of the same
+slice can return the same rows in a different sequence. Sort on
+\code{ts_event}/\code{ts_recv} and \code{instrument_id} if you need a reproducible order.
 }
 \examples{
 \dontrun{

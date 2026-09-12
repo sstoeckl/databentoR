@@ -25,6 +25,12 @@ REF = pathlib.Path(__file__).resolve().parent / "reference"
 REF.mkdir(exist_ok=True)
 
 # name, dataset, schema, symbols, stype_in, start, end
+#
+# Window sizes are chosen for coverage, not for cost: Databento bills an
+# intraday request at whole-day granularity, so a one-second window and a
+# one-minute window of the same instrument and schema are quoted identically.
+# Measured 2026-09-12: ES.c.0 trades quotes 0.029645 USD for any window
+# inside 2024-01-02.
 SLICES = [
     ("glbx_es_ohlcv1d", "GLBX.MDP3", "ohlcv-1d", ["ES.FUT"], "parent",
      "2024-01-02", "2024-01-09"),

@@ -24,12 +24,12 @@ Depends:
     R (>= 4.1)
 Imports:
     arrow,
+    bit64,
     httr2 (>= 1.0.0),
     jsonlite,
     tibble,
     utils
 Suggests:
-    bit64,
     curl,
     digest,
     knitr,

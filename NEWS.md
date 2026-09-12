@@ -34,6 +34,10 @@ official Python client 0.86.0 on the wire.
 * `ts_type = "integer64"` returns exact nanosecond timestamps. The default
   `POSIXct` stores seconds as a double and resolves to about a quarter of a
   microsecond on modern dates.
+* Fields that are 64-bit on the wire come back as `bit64::integer64` instead
+  of being downcast to double, so `order_id`, `raw_instrument_id` and an
+  undefined statistics `quantity` keep their value. The last of those is the
+  int64 maximum, which a double rounds.
 * Symbols are normalised as the Python client normalises them: upper-cased,
   with the roll rule of a continuous symbol lower-cased, `NULL` becoming
   `ALL_SYMBOLS`, and the documented 2000-symbol cap enforced before the
@@ -52,7 +56,9 @@ official Python client 0.86.0 on the wire.
   and order. The R value domains are checked against the compiled DBN enums.
 * Data equivalence over six tiny slices spanning `ohlcv-1d`, `trades`,
   `tbbo`, `mbp-1`, `statistics` and `definition`, with prices compared to a
-  relative tolerance of `1e-12`.
+  relative tolerance of `1e-12`. Both sides are sorted before comparison: the
+  server does not promise a stable order among records sharing a timestamp,
+  and neither client can.
 * A weekly workflow diffs a new upstream release against the pin and files the
   changed calls as an issue.
 

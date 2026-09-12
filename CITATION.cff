@@ -30,4 +30,15 @@ contact:
   given-names: Sebastian
   email: sebastian.stoeckl@uni.li
   orcid: https://orcid.org/0000-0002-4196-6093
+keywords:
+- arrow
+- databento
+- finance
+- httr2
+- market-data
+- market-microstructure
+- parquet
+- r
+- r-package
+- tick-data
 

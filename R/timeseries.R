@@ -17,6 +17,15 @@
 #' Inference is unsafe here: a `trades` slice whose `action` column is all
 #' `"T"` would otherwise be read as boolean. See [db_field_types()].
 #'
+#' Fields that are 64-bit on the wire come back as `bit64::integer64` rather
+#' than double, so `order_id`, `raw_instrument_id` and an undefined
+#' statistics `quantity` survive intact.
+#'
+#' Row order is the server's, and the server does not guarantee a stable
+#' order among records that share a timestamp: two downloads of the same
+#' slice can return the same rows in a different sequence. Sort on
+#' `ts_event`/`ts_recv` and `instrument_id` if you need a reproducible order.
+#'
 #' @inheritParams db_get_cost
 #' @param stype_out Symbol type of the output, see [db_stypes()]. The API
 #'   resolves to `"instrument_id"` from every input type, and to
@@ -121,6 +130,12 @@ db_get_range <- function(dataset, start, end = NULL, symbols = NULL,
 # Read a Databento CSV slice with explicit column types.
 .db_read_csv <- function(file, compression = "none", pretty_px = TRUE,
                          pretty_ts = TRUE, col_types = NULL) {
+  # arrow downcasts 64-bit integers to double by default, which silently
+  # mangles the fields that genuinely need the range: order_id and
+  # raw_instrument_id are unsigned 64-bit, and an undefined statistics
+  # quantity is the int64 maximum, which no double represents.
+  old <- options(arrow.int64_downcast = FALSE)
+  on.exit(options(old), add = TRUE)
   input <- if (identical(compression, "zstd")) {
     arrow::CompressedInputStream$create(file, arrow::Codec$create("zstd"))
   } else {
