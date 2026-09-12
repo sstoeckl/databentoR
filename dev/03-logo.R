@@ -20,7 +20,7 @@ col_ask   <- "#f0685b"  # ask side
 col_tape  <- "#ffffff"  # trade tape
 col_mid   <- "#7f97ad"  # mid-price guide
 
-set.seed(3908)
+set.seed(20260912)
 
 # --- the book: 16 levels each side, decaying size, cumulative depth ---------
 n   <- 16L
