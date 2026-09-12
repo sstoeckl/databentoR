@@ -120,11 +120,13 @@ row positions while holding identical data.
 - **Text** exactly, after normalising the empty field.
 
 One full run makes 17 billed downloads, about 0.27 US dollars at the
-rates measured in September 2026. Window size is not a lever: Databento
-bills an intraday request at whole-day granularity, so a one-second and
-a ten-minute window of the same instrument and schema are quoted
-identically. `dev/equivalence/quote.R` prices a run using only the free
-preview endpoints.
+rates measured in September 2026. Databento bills intraday requests in
+15-minute chunks, so a one-minute and a ten-minute window of the same
+instrument and schema are quoted identically, while a whole day costs
+about sixteen times a single chunk. The slices here therefore sit inside
+one chunk each, which is the floor for their schema.
+`dev/equivalence/quote.R` prices a run using only the free preview
+endpoints.
 
 Layer 2 spends money, so it needs both a key and an explicit opt-in:
 
