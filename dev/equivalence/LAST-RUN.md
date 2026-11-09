@@ -1,6 +1,6 @@
 # Equivalence attestation
 
-Generated 2026-11-02 13:32 UTC by `dev/equivalence/report.R`.
+Generated 2026-11-09 14:09 UTC by `dev/equivalence/report.R`.
 
 * databentoR 0.1.0
 * databento-python 0.86.0 (pinned submodule)
